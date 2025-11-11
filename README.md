@@ -31,7 +31,33 @@ The test project uses `WebApplicationFactory<Program>` from `Microsoft.AspNetCor
 
 See: `tests/SignalRWebApi.IntegrationTests/Fixtures/SignalRWebApplicationFactory.cs`
 
-### 2. **TestContainers for Redis**
+### 2. **Integration Test Configuration (appsettings.IntegrationTests.json)**
+The test project can use a dedicated configuration file for test-specific settings:
+- Test-specific logging levels (e.g., Debug for SignalR)
+- SignalR configuration options
+- Custom test settings (timeouts, feature flags, etc.)
+
+The `SignalRWebApplicationFactory` automatically loads `appsettings.IntegrationTests.json`:
+```csharp
+protected override void ConfigureWebHost(IWebHostBuilder builder)
+{
+    builder.ConfigureAppConfiguration((context, config) =>
+    {
+        // Load integration test specific appsettings
+        config.AddJsonFile("appsettings.IntegrationTests.json", optional: false);
+        
+        // Override specific values with TestContainer settings
+        config.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Redis"] = RedisConnectionString
+        });
+    });
+}
+```
+
+See: `tests/SignalRWebApi.IntegrationTests/appsettings.IntegrationTests.json`
+
+### 3. **TestContainers for Redis**
 Instead of requiring a manually-started Redis instance, tests use **Testcontainers.Redis** to:
 - Automatically spin up a Redis Docker container before tests
 - Configure the Web API to use this test Redis instance
@@ -39,7 +65,7 @@ Instead of requiring a manually-started Redis instance, tests use **Testcontaine
 
 This ensures tests are **isolated** and **repeatable** without external dependencies.
 
-### 3. **SignalR Client Configuration**
+### 4. **SignalR Client Configuration**
 Tests create SignalR client connections that connect to the in-memory test server:
 
 ```csharp

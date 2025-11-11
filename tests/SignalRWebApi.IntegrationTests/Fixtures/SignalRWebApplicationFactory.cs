@@ -34,7 +34,18 @@ public class SignalRWebApplicationFactory : WebApplicationFactory<Program>, IAsy
     {
         builder.ConfigureAppConfiguration((context, config) =>
         {
+            // Load integration test specific appsettings.json
+            var integrationTestSettings = Path.Combine(
+                Directory.GetCurrentDirectory(),
+                "appsettings.IntegrationTests.json");
+            
+            if (File.Exists(integrationTestSettings))
+            {
+                config.AddJsonFile(integrationTestSettings, optional: false, reloadOnChange: false);
+            }
+
             // Override the Redis connection string with TestContainer connection
+            // This takes precedence over appsettings.IntegrationTests.json
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["ConnectionStrings:Redis"] = RedisConnectionString

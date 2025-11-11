@@ -25,4 +25,10 @@
     <ProjectReference Include="..\..\src\SignalRWebApi\SignalRWebApi.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="appsettings.IntegrationTests.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>
