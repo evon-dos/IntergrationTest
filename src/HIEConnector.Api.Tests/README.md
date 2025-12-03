@@ -69,6 +69,8 @@ public class MyIntegrationTests : IClassFixture<TestWebApplicationFactory>, IAsy
 - `CleanupDatabaseAsync()` - Resets database between tests
 - `SeedTestDataAsync(action)` - Seeds test data
 - `GetService<T>()` - Gets services from DI container
+- `GetServerUrl()` - Gets the test server URL with port
+- `GetEndpointUrl(path)` - Builds full URL for an endpoint
 
 ### 2. SimpleTestWebApplicationFactory (In-Memory)
 
@@ -110,6 +112,8 @@ public class QuickTests : IClassFixture<SimpleTestWebApplicationFactory>
 
 **Key Methods:**
 - `CreateAuthenticatedClient(userId, roles)` - Creates client with test auth
+- `GetServerUrl()` - Gets the test server URL with port
+- `GetEndpointUrl(path)` - Builds full URL for an endpoint
 - `ReplaceServiceWithMock<TService, TMock>()` - Swaps real services with mocks
 
 ### 3. IntegrationTestFixture (Shared Setup)
@@ -235,7 +239,43 @@ builder.ConfigureAppConfiguration((context, config) =>
 
 ## Best Practices
 
-### 1. Database Isolation
+### 1. Getting the Test Server URL
+
+To access the test server URL with port in your tests:
+
+```csharp
+// Method 1: Using the helper method
+var serverUrl = factory.GetServerUrl();
+Console.WriteLine($"Server: {serverUrl}"); // e.g., http://localhost/
+
+// Method 2: Direct access
+var serverUrl = factory.Server.BaseAddress;
+
+// Method 3: From HttpClient
+var client = factory.CreateClient();
+var serverUrl = client.BaseAddress;
+
+// Building endpoint URLs
+var tenantsUrl = factory.GetEndpointUrl("api/tenants");
+var hubUrl = new Uri(serverUrl, "/hubs/connector");
+```
+
+**For SignalR connections:**
+```csharp
+var hubUrl = new Uri(factory.GetServerUrl(), "/hubs/connector");
+var connection = new HubConnectionBuilder()
+    .WithUrl(hubUrl, options =>
+    {
+        options.HttpMessageHandlerFactory = _ => factory.Server.CreateHandler();
+    })
+    .Build();
+```
+
+**Important:** The test server is in-memory by default. `Server.BaseAddress` provides a URL, but no actual TCP port is opened. Use `factory.CreateClient()` for HTTP requests.
+
+See [`GET_SERVER_URL.md`](GET_SERVER_URL.md) for complete examples and [`ServerUrlExamples.cs`](ServerUrlExamples.cs) for working code.
+
+### 2. Database Isolation
 Always clean the database between tests:
 ```csharp
 public async Task InitializeAsync()
@@ -244,7 +284,7 @@ public async Task InitializeAsync()
 }
 ```
 
-### 2. Test Data Seeding
+### 3. Test Data Seeding
 Use the factory's seed method for consistency:
 ```csharp
 await _factory.SeedTestDataAsync(context =>
@@ -256,7 +296,7 @@ await _factory.SeedTestDataAsync(context =>
 });
 ```
 
-### 3. Service Mocking
+### 4. Service Mocking
 Replace external dependencies with mocks:
 ```csharp
 builder.ConfigureTestServices(services =>
@@ -266,7 +306,7 @@ builder.ConfigureTestServices(services =>
 });
 ```
 
-### 4. Parallel Test Execution
+### 5. Parallel Test Execution
 Use collection fixtures to control test parallelization:
 ```csharp
 [Collection("Integration Tests")]  // Tests in same collection run sequentially

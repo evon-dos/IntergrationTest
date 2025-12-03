@@ -94,6 +94,25 @@ public class SimpleTestWebApplicationFactory : WebApplicationFactory<Program>
         }
         return client;
     }
+
+    /// <summary>
+    /// Gets the base URL of the test server including scheme, host, and port.
+    /// Example: http://localhost:5000/
+    /// </summary>
+    public Uri GetServerUrl()
+    {
+        return Server.BaseAddress;
+    }
+
+    /// <summary>
+    /// Builds a full URL for a specific endpoint relative to the server base URL.
+    /// </summary>
+    /// <param name="relativeUrl">The relative URL path (e.g., "api/tenants" or "/api/tenants")</param>
+    /// <returns>The full URL including server base address</returns>
+    public Uri GetEndpointUrl(string relativeUrl)
+    {
+        return new Uri(Server.BaseAddress, relativeUrl);
+    }
 }
 
 // Mock service implementations
