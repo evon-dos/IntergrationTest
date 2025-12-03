@@ -1,6 +1,6 @@
-# HIE Connector Integration Test Factory
+# HIE Connector Integration Test Factory (IClassFixture Pattern)
 
-This repository demonstrates comprehensive test factory patterns for integration testing an ASP.NET Core Web API (HIE Connector).
+This repository demonstrates comprehensive test factory patterns using `IClassFixture` for integration testing both **ASP.NET Core Web APIs** and **Console Applications**.
 
 ## What's a Test Factory?
 
@@ -74,31 +74,45 @@ public class MyTests : IClassFixture<TestWebApplicationFactory>
 
 ```
 /
+├── ICLASSFIXTURE_GUIDE.md        # IClassFixture for Web API and Console Apps
 ├── FACTORY_OVERVIEW.md           # Quick answer: What factories look like
 ├── COMPARISON.md                 # Production vs Test comparison
 │
-└── src/HIEConnector.Api.Tests/
-    ├── README.md                 # Comprehensive documentation
-    ├── ARCHITECTURE.md           # Visual diagrams
+├── src/HIEConnector.Api.Tests/   # WEB API TEST PATTERNS
+│   ├── README.md                 # Comprehensive documentation
+│   ├── ARCHITECTURE.md           # Visual diagrams
+│   │
+│   ├── TestWebApplicationFactory.cs              # Full factory (containers)
+│   ├── SimpleTestWebApplicationFactory.cs        # Fast factory (in-memory)
+│   ├── ConnectorApiIntegrationTests.cs           # Example tests
+│   │
+│   └── Fixtures/
+│       └── IntegrationTestFixture.cs             # Base classes & fixtures
+│
+└── src/HIEConnector.ConsoleApp.Tests/  # CONSOLE APP TEST PATTERNS
+    ├── README.md                       # Console app guide
+    ├── COMPARISON.md                   # Web vs Console comparison
     │
-    ├── TestWebApplicationFactory.cs              # Full factory (containers)
-    ├── SimpleTestWebApplicationFactory.cs        # Fast factory (in-memory)
-    ├── ConnectorApiIntegrationTests.cs           # Example tests
-    │
-    └── Fixtures/
-        └── IntegrationTestFixture.cs             # Base classes & fixtures
+    ├── ConsoleAppTestFixture.cs        # Full fixture (containers)
+    ├── SimpleConsoleAppTestFixture.cs  # Fast fixture (in-memory)
+    └── ConsoleAppIntegrationTests.cs   # Example tests
 ```
 
 ## Documentation
 
 | File | Description |
 |------|-------------|
+| **[ICLASSFIXTURE_GUIDE.md](ICLASSFIXTURE_GUIDE.md)** | IClassFixture for both Web API and Console Apps |
 | **[FACTORY_OVERVIEW.md](FACTORY_OVERVIEW.md)** | Quick overview answering "what do factories look like?" |
 | **[COMPARISON.md](COMPARISON.md)** | Side-by-side: Production vs Test environments |
+| **Web API Testing** |
 | **[src/HIEConnector.Api.Tests/README.md](src/HIEConnector.Api.Tests/README.md)** | Complete guide with examples, best practices |
 | **[src/HIEConnector.Api.Tests/ARCHITECTURE.md](src/HIEConnector.Api.Tests/ARCHITECTURE.md)** | Architecture diagrams and component interactions |
+| **Console App Testing** |
+| **[src/HIEConnector.ConsoleApp.Tests/README.md](src/HIEConnector.ConsoleApp.Tests/README.md)** | Console app testing guide |
+| **[src/HIEConnector.ConsoleApp.Tests/COMPARISON.md](src/HIEConnector.ConsoleApp.Tests/COMPARISON.md)** | Web API vs Console App comparison |
 
-## Three Factory Patterns
+## Three Factory Patterns (Web API)
 
 ### 1. TestWebApplicationFactory
 - **Uses:** Docker containers (PostgreSQL, Redis)
@@ -117,6 +131,20 @@ public class MyTests : IClassFixture<TestWebApplicationFactory>
 - **Best for:** Reducing boilerplate code
 - **Pros:** Cleaner tests, reusable patterns
 - **Cons:** Slight learning curve
+
+## Two Factory Patterns (Console App)
+
+### 1. ConsoleAppTestFixture
+- **Uses:** IHost with Docker containers
+- **Best for:** Testing services and background workers
+- **Access:** Direct service calls via `ExecuteInScopeAsync()`
+- **No HTTP layer** - tests business logic directly
+
+### 2. SimpleConsoleAppTestFixture
+- **Uses:** IHost with in-memory databases
+- **Best for:** Fast service testing
+- **Access:** Direct service calls
+- **Fast execution** - ideal for CI/CD
 
 ## Key Features
 
@@ -176,5 +204,6 @@ See the original API structure in the problem statement for context.
 
 ---
 
-**Start with:** [FACTORY_OVERVIEW.md](FACTORY_OVERVIEW.md) for a quick answer  
-**Deep dive:** [src/HIEConnector.Api.Tests/README.md](src/HIEConnector.Api.Tests/README.md) for complete guide
+**Start with:** [ICLASSFIXTURE_GUIDE.md](ICLASSFIXTURE_GUIDE.md) for overview of both patterns  
+**Web API:** [src/HIEConnector.Api.Tests/README.md](src/HIEConnector.Api.Tests/README.md) for complete guide  
+**Console App:** [src/HIEConnector.ConsoleApp.Tests/README.md](src/HIEConnector.ConsoleApp.Tests/README.md) for console app guide
