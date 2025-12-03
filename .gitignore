@@ -1,0 +1,25 @@
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Bb]in/
+[Oo]bj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Visual Studio cache/options
+.vs/
+
+# Test Results
+TestResults/
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+packages/
+
+# User-specific files
+*.rsuser
