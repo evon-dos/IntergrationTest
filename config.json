@@ -1,0 +1,25 @@
+{
+  "api": {
+    "baseUrl": "https://api.example.com",
+    "endpoints": {
+      "createHost": "/v1/hosts/create",
+      "getHost": "/v1/hosts/{id}",
+      "updateHost": "/v1/hosts/{id}",
+      "deleteHost": "/v1/hosts/{id}",
+      "listHosts": "/v1/hosts"
+    },
+    "timeout": 30000,
+    "retryAttempts": 3
+  },
+  "environments": {
+    "development": {
+      "baseUrl": "http://localhost:8080"
+    },
+    "staging": {
+      "baseUrl": "https://staging-api.example.com"
+    },
+    "production": {
+      "baseUrl": "https://api.example.com"
+    }
+  }
+}
