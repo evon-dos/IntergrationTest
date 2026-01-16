@@ -14,6 +14,9 @@ public class FirebirdTestFixture : IAsyncLifetime
     private const string FirebirdUser = "SYSDBA";
     private const string FirebirdPassword = "masterkey";
     private const string DatabaseName = "test.fdb";
+    private const int DatabaseInitializationDelaySeconds = 15;
+    private const int ConnectionRetryAttempts = 10;
+    private const int ConnectionRetryDelaySeconds = 2;
     
     private IContainer? _firebirdContainer;
     
@@ -57,11 +60,10 @@ public class FirebirdTestFixture : IAsyncLifetime
         
         // Wait for the database to be fully initialized
         // Firebird needs time to start the service and create the initial database
-        await Task.Delay(TimeSpan.FromSeconds(15));
+        await Task.Delay(TimeSpan.FromSeconds(DatabaseInitializationDelaySeconds));
         
         // Test connection to ensure database is ready
-        var retries = 10;
-        for (int i = 0; i < retries; i++)
+        for (int i = 0; i < ConnectionRetryAttempts; i++)
         {
             try
             {
@@ -72,8 +74,8 @@ public class FirebirdTestFixture : IAsyncLifetime
             }
             catch
             {
-                if (i == retries - 1) throw;
-                await Task.Delay(TimeSpan.FromSeconds(2));
+                if (i == ConnectionRetryAttempts - 1) throw;
+                await Task.Delay(TimeSpan.FromSeconds(ConnectionRetryDelaySeconds));
             }
         }
     }
@@ -107,11 +109,12 @@ public class FirebirdTestFixture : IAsyncLifetime
             containerBackupPath);
 
         // Execute gbak restore command
+        // Note: Using environment variable for password to avoid exposing it in process lists
         var restoreCommand = new[]
         {
             "/bin/bash",
             "-c",
-            $"gbak -c -v {containerBackupPath} {containerDatabasePath} -user {FirebirdUser} -password {FirebirdPassword}"
+            $"ISC_PASSWORD='{FirebirdPassword}' gbak -c -v {containerBackupPath} {containerDatabasePath} -user {FirebirdUser}"
         };
 
         var execResult = await _firebirdContainer.ExecAsync(restoreCommand);

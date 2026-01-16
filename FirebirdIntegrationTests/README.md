@@ -68,21 +68,45 @@ This restores a database from a Firebird backup file.
 
 ### Creating a Backup File
 
-To create a backup file for testing:
+To create a backup file for testing, you have several options:
+
+#### Option 1: Using the Helper Script
+
+The project includes a helper script `create_backup.sh` that automates the backup process:
+
+```bash
+# First, run the tests to start a Firebird container
+dotnet test
+
+# In another terminal, run the backup script
+./create_backup.sh create
+```
+
+#### Option 2: Manual Process
 
 1. Run your tests to start the container
 2. Create sample data in the database
-3. Use `gbak` command inside the container to create a backup:
+3. Find the container ID:
+
+```bash
+docker ps | grep firebird
+```
+
+4. Use `gbak` command inside the container to create a backup:
 
 ```bash
 docker exec -it <container_id> gbak -b /firebird/data/test.fdb /firebird/data/backup.fbk -user SYSDBA -password masterkey
 ```
 
-4. Copy the backup file from the container:
+5. Copy the backup file from the container:
 
 ```bash
 docker cp <container_id>:/firebird/data/backup.fbk ./TestData/sample_backup.fbk
 ```
+
+#### Option 3: Programmatic Backup (Advanced)
+
+You can also create backups programmatically using FirebirdBackup class from the Firebird client library.
 
 ## Running Tests
 
