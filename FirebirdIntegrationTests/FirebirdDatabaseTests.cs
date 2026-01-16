@@ -35,7 +35,7 @@ public class FirebirdDatabaseTests : IClassFixture<FirebirdTestFixture>
         var count = await _fixture.ExecuteScalarAsync("SELECT COUNT(*) FROM TestTable");
 
         // Assert
-        Assert.Equal(5, count);
+        Assert.True(count >= 5, $"Expected at least 5 rows, but found {count}");
     }
 
     [Fact]

@@ -35,17 +35,16 @@ public class FirebirdTestFixture : IAsyncLifetime
         _firebirdContainer = new ContainerBuilder()
             .WithImage("jacobalberty/firebird:4.0")
             .WithPortBinding(FirebirdPort, true)
-            .WithEnvironment("FIREBIRD_DATABASE", DatabaseName)
-            .WithEnvironment("FIREBIRD_USER", FirebirdUser)
-            .WithEnvironment("FIREBIRD_PASSWORD", FirebirdPassword)
             .WithEnvironment("ISC_PASSWORD", FirebirdPassword)
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(FirebirdPort))
+            .WithEnvironment("FIREBIRD_DATABASE", DatabaseName)
             .Build();
 
         await _firebirdContainer.StartAsync();
         
         HostPort = _firebirdContainer.GetMappedPublicPort(FirebirdPort);
         
+        // For Firebird connection, database can be specified as just filename
+        // when connecting to embedded/local server
         ConnectionString = new FbConnectionStringBuilder
         {
             DataSource = "localhost",
@@ -56,16 +55,35 @@ public class FirebirdTestFixture : IAsyncLifetime
             ServerType = FbServerType.Default
         }.ToString();
         
-        // Wait a bit for the database to be fully initialized
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        // Wait for the database to be fully initialized
+        // Firebird needs time to start the service and create the initial database
+        await Task.Delay(TimeSpan.FromSeconds(15));
+        
+        // Test connection to ensure database is ready
+        var retries = 10;
+        for (int i = 0; i < retries; i++)
+        {
+            try
+            {
+                using var connection = new FbConnection(ConnectionString);
+                await connection.OpenAsync();
+                await connection.CloseAsync();
+                break;
+            }
+            catch
+            {
+                if (i == retries - 1) throw;
+                await Task.Delay(TimeSpan.FromSeconds(2));
+            }
+        }
     }
 
     /// <summary>
     /// Restores a database from a backup file.
     /// </summary>
     /// <param name="backupFilePath">Path to the backup file (.fbk)</param>
-    /// <param name="databasePath">Optional database path inside the container (defaults to DatabaseName)</param>
-    public async Task RestoreDatabaseFromBackupAsync(string backupFilePath, string? databasePath = null)
+    /// <param name="databaseName">Optional database name (defaults to DatabaseName)</param>
+    public async Task RestoreDatabaseFromBackupAsync(string backupFilePath, string? databaseName = null)
     {
         if (_firebirdContainer == null)
         {
@@ -77,7 +95,8 @@ public class FirebirdTestFixture : IAsyncLifetime
             throw new FileNotFoundException($"Backup file not found: {backupFilePath}");
         }
 
-        databasePath ??= DatabaseName;
+        databaseName ??= DatabaseName;
+        var containerDatabasePath = $"/firebird/data/{databaseName}";
         
         // Copy backup file to container
         var backupFileName = Path.GetFileName(backupFilePath);
@@ -92,7 +111,7 @@ public class FirebirdTestFixture : IAsyncLifetime
         {
             "/bin/bash",
             "-c",
-            $"gbak -c -v {containerBackupPath} /firebird/data/{databasePath} -user {FirebirdUser} -password {FirebirdPassword}"
+            $"gbak -c -v {containerBackupPath} {containerDatabasePath} -user {FirebirdUser} -password {FirebirdPassword}"
         };
 
         var execResult = await _firebirdContainer.ExecAsync(restoreCommand);
@@ -105,13 +124,13 @@ public class FirebirdTestFixture : IAsyncLifetime
         }
         
         // Update connection string to point to the restored database
-        if (databasePath != DatabaseName)
+        if (databaseName != DatabaseName)
         {
             ConnectionString = new FbConnectionStringBuilder
             {
                 DataSource = "localhost",
                 Port = HostPort,
-                Database = databasePath,
+                Database = databaseName,
                 UserID = FirebirdUser,
                 Password = FirebirdPassword,
                 ServerType = FbServerType.Default
@@ -130,30 +149,41 @@ public class FirebirdTestFixture : IAsyncLifetime
         using var connection = new FbConnection(ConnectionString);
         await connection.OpenAsync();
 
-        var createTableSql = @"
-            CREATE TABLE TestTable (
-                Id INTEGER NOT NULL PRIMARY KEY,
-                Name VARCHAR(100),
-                CreatedDate TIMESTAMP
-            )";
-
-        using var command = new FbCommand(createTableSql, connection);
-        await command.ExecuteNonQueryAsync();
-
-        // Insert sample data
-        var insertSql = "INSERT INTO TestTable (Id, Name, CreatedDate) VALUES (@Id, @Name, @CreatedDate)";
-        using var insertCommand = new FbCommand(insertSql, connection);
+        // Check if table already exists
+        var checkTableSql = @"
+            SELECT COUNT(*) FROM RDB$RELATIONS 
+            WHERE RDB$RELATION_NAME = 'TESTTABLE' AND RDB$SYSTEM_FLAG = 0";
         
-        insertCommand.Parameters.Add("@Id", FbDbType.Integer);
-        insertCommand.Parameters.Add("@Name", FbDbType.VarChar);
-        insertCommand.Parameters.Add("@CreatedDate", FbDbType.TimeStamp);
+        using var checkCommand = new FbCommand(checkTableSql, connection);
+        var tableExists = Convert.ToInt32(await checkCommand.ExecuteScalarAsync()) > 0;
 
-        for (int i = 1; i <= 5; i++)
+        if (!tableExists)
         {
-            insertCommand.Parameters["@Id"].Value = i;
-            insertCommand.Parameters["@Name"].Value = $"Test Item {i}";
-            insertCommand.Parameters["@CreatedDate"].Value = DateTime.Now;
-            await insertCommand.ExecuteNonQueryAsync();
+            var createTableSql = @"
+                CREATE TABLE TestTable (
+                    Id INTEGER NOT NULL PRIMARY KEY,
+                    Name VARCHAR(100),
+                    CreatedDate TIMESTAMP
+                )";
+
+            using var command = new FbCommand(createTableSql, connection);
+            await command.ExecuteNonQueryAsync();
+
+            // Insert sample data
+            var insertSql = "INSERT INTO TestTable (Id, Name, CreatedDate) VALUES (@Id, @Name, @CreatedDate)";
+            using var insertCommand = new FbCommand(insertSql, connection);
+            
+            insertCommand.Parameters.Add("@Id", FbDbType.Integer);
+            insertCommand.Parameters.Add("@Name", FbDbType.VarChar);
+            insertCommand.Parameters.Add("@CreatedDate", FbDbType.TimeStamp);
+
+            for (int i = 1; i <= 5; i++)
+            {
+                insertCommand.Parameters["@Id"].Value = i;
+                insertCommand.Parameters["@Name"].Value = $"Test Item {i}";
+                insertCommand.Parameters["@CreatedDate"].Value = DateTime.Now;
+                await insertCommand.ExecuteNonQueryAsync();
+            }
         }
     }
 
